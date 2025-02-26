@@ -1,54 +1,83 @@
-define              = -DPOSRES
-integrator          = md
-dt                  = 0.001 ; ps !;according to Bjelkmar P et al
-nsteps              = 100000 ; total 100 ps.
-nstcomm             = 100    ; ours
-nstcalcenergy       = 100    ; ours
-nstxout             = 1000     ; collect data every 0.1 ps
-nstvout             = 1000
-nstenergy           = 1000
-nstlog              = 1000
-nstlist             = 10 ;according to Bjelkmar P et al
-ns-type             = grid ;ours
-cutoff-scheme       = Verlet ;according to GROMACS proposal
-vdw-modifier        = force-switch
-rlist               = 1.2 ;according to GROMACS proposal
-rvdw                = 1.2 ;according to Bjelkmar P et al ;according to GROMACS proposal
-rvdw-switch         = 1.0 ;according to Bjelkmar P et al
-coulombtype         = PME ;according to Bjelkmar P et al
-rcoulomb            = 1.2 ;according to Bjelkmar P et al
-DispCorr            = no  ;according to GROMACS proposal
-vdwtype             = cut-off ;according to GROMACS proposal,question?
-fourierspacing      = 0.12
-fourier-nx          = 0
-fourier-ny          = 0
-fourier-nz          = 0
-pme-order           = 4
-ewald-rtol          = 1e-5
-
-; Berendsen temperature coupling is on
-Tcoupl              = v-rescale ;according to Bjelkmar P et al
-tau-t               = 0.1     0.1  ;according to Bjelkmar P et al
-tc-grps             = protein     non-protein
-ref-t               = 310         310
-; Pressure coupling is on
-Pcoupl              = parrinello-rahman ;according to Bjelkmar P et al
-Pcoupltype          = isotropic ;according to Bjelkmar P et al
-tau-p               = 2.0 ;according to Bjelkmar P et al
-compressibility     = 4.5e-5 ;ours
-ref-p               = 1.0 ;ours
-pbc                 = xyz ;according to Bjelkmar P et al
-refcoord-scaling    = all ;ours
-; Generate velocites is off, the paramters of gen-temp and gen-seed is invalid
-gen-vel             = no ;ours
-gen-temp            = 310.0 ;ours
-gen-seed            = -1 ;ours
-
-; OPTIONS FOR BONDS
-constraints              = all-bonds
-continuation             = yes          ; continuation from NVT
-constraint-algorithm     = lincs ;according to Bjelkmar P et al
-lincs-iter               = 1            ; accuracy of LINCS
-lincs-order              = 4            ; also related to accuracy
-
-
+; NPT EQUILIBRATION RUN
+; (used as input into grompp to generate npt.tpr)
+;
+define          = -DPOSRES -DPOSRES_FC_BB=0 -DPOSRES_FC_SC=0 -DPOSRES_FC_LIPID=0  ; position restrain the protein
+;
+;  RUN PARAMETERS
+integrator      = md            ; leap-frog integrator
+nsteps          = 5000000      ; 2 * 5 000 000 = 10 000 000 fs = 10 ns 
+dt              = 0.002         ; 2 fs
+;
+;  OUTPUT CONTROL
+; Output frequency for coords (x), velocities (v) and forces (f) = *.trr
+;
+nstxout             =  50000   ; [steps] save coordinates every 50 ns 
+nstvout             =  50000   ; [steps] write velocities every 50 ns 
+nstfout             =  50000   ; [steps] write forces every 50 ns
+;
+; Output frequency for coordinates = *.xtc
+;
+nstxout-compressed  = 10000      ;  [steps] save position coordinates every 10 ps
+compressed-x-grps   = System
+;
+; Output frequency for energies to log and energy file = *.log and *.edr
+;
+nstlog              =  1000     ; [steps] update log file every 1.0 ps
+nstenergy           =  1000     ; [steps] save energies every 1.0 ps 
+energygrps          =  System
+;
+; BOND PARAMETERS
+continuation            = yes           ; starting from the NVT run
+constraint_algorithm    = lincs         ; holonomic constraints
+constraints             = all-bonds     ; all bonds (even heavy atom-H bonds) constrained
+lincs_iter              = 1             ; accuracy of LINCS
+lincs_order             = 4             ; also related to accuracy
+;
+;  NEIGHBOR SEARCHING
+;
+cutoff-scheme       =  Verlet ; Generate a pair list with buffering (other option group)
+nstlist             =  500      ; Frequency to update neighbor list and long range forces
+rlist               =  1.2    ; [nm] short-range neighbour list cutoff
+;
+;  ELECTROSTATICS AND VdWAALS
+;
+coulombtype         =  PME
+pme_order           =  4                        ; cubic interpolation (other options available)
+vdwtype             =  Cut-off
+vdw-modifier        =  Potential-shift-Verlet  ; elects Potential-shift with the Verlet cutoff-scheme, as it is (nearly) free
+rcoulomb            =  1.2                      ; [nm] distance for the coulomb cut-off
+rvdw                =  1.2                      ; [nm] distance for the vdw cut-off
+epsilon_r           =  1                        ; The relative dielectric constant( 0=infinity)
+fourierspacing      =  0.16                     ; grid spacing for FFT
+;
+; TEMPERATURE COUPLING (is on)
+tcoupl          = V-rescale               ; more accurate for membrane simulations
+tc-grps         = Protein_membrane solvent  ; two coupling groups - more accurate
+tau_t           = 0.1     0.1               ; [ps] time constant, one for each group
+ref_t           = 310     310               ; [K] reference temperature, one for each group
+;
+; PRESSURE COUPLING  (is on in NPT)
+pcoupl              = Berendsen             ; Pressure coupling on in NPT
+pcoupltype          = semiisotropic         ; uniform scaling (isotropic) not appropriate for membranes
+tau_p               = 0.5                   ; [ps] time constant
+ref_p               = 1.0  1.0              ; [bar] reference pressure for x-y and z directions
+compressibility     = 4.5e-5 4.5e-5         ; [bar^-1] isothermal compressibility for x-y and z directions
+;
+; PERIODIC BOUNDARY CONDITIONS 
+pbc             = xyz           ; 3-D PBC
+;
+; DISPERSION CORRECTION 
+DispCorr        = EnerPres      ; Apply long range dispersion corrections for E and P
+;
+; VELOCITY GENERATION is off
+gen_vel         = no       ; we start from velocities generated in nvt run 
+;gen_temp       = 310      ; temperature for Maxwell distribution
+;gen_seed       = -1       ; generate a random seed
+;
+; CENTER OF MASS (COM) MOTION REMOVAL
+; to prevent drifting of the protein-bilayer in opposite direction as water-ions
+;
+nstcomm          = 1
+comm-mode        = linear
+comm-grps        = Protein_membrane solvent 
+refcoord_scaling = com  ; scale COM of reference coordinates
