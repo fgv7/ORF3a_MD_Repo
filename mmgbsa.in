@@ -1,0 +1,26 @@
+Sample input file for GB calculation
+This input file is meant to show only that gmx_MMPBSA works. Althought,
+we tried to used the input files as recommended in the Amber manual,
+some parameters have been changed to perform more expensive calculations
+in a reasonable amount of time. Feel free to change the parameters 
+according to what is better for your system.
+&general
+  startframe=1, 
+  endframe=280, 
+  interval=1, 
+  verbose=2,
+  ligand_mask=':200-398',       
+  receptor_mask=':1-199',       
+/
+
+&gb
+  igb=5,                        
+  saltcon=0.150,                
+/
+
+&decomp             
+idecomp=1, print_res='7,8,10,11,14,18,21,22,23,24,25,36,39,42,46,49,50,83,87,103,104,105,167,168,206,207,209,210,213,217,220,221,222,223,224,235,238,241,245,248,249,282,286,302,303,304,366,367',  
+dec_verbose=1,
+/
+...
+
